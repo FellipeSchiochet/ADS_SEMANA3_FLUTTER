@@ -1,0 +1,106 @@
+import 'dart:convert'; // usado para converter o JSON da API
+import 'package:flutter/foundation.dart'; // usado para debugPrint
+import 'package:flutter/material.dart'; // widgets do Flutter
+import 'package:http/http.dart' as http; // biblioteca para acessar a API pela internet
+
+void main() {
+  runApp(const MainApp()); // executa o app chamando a classe MainApp
+}
+
+// Classe principal do app
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false, // remove o banner de debug no topo
+      home: ClimaPage(), // define a tela inicial como ClimaPage
+    );
+  }
+}
+
+// Criamos um StatefulWidget porque os dados vão mudar (quando buscar o clima)
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State<ClimaPage> createState() => _ClimaPageState();
+}
+
+class _ClimaPageState extends State<ClimaPage> {
+  // Controlador para capturar o texto digitado no TextField
+  final TextEditingController cidadeController = TextEditingController();
+
+  // Variável para guardar o resultado da busca
+  String resultado = "";
+
+  // Função para buscar o clima de uma cidade
+  Future<void> buscarClima(String cidade) async {
+    const apiKey = 'd62e687bba2640f08e7222548251908'; // chave da API
+    final url = Uri.parse(
+        'https://api.weatherapi.com/v1/current.json?key=$apiKey&q=$cidade&lang=pt'); // monta a URL com a cidade digitada
+
+    final resposta = await http.get(url); // faz a requisição GET
+
+    // Se a resposta for sucesso (200), pegamos os dados
+    if (resposta.statusCode == 200) {
+      final dados = jsonDecode(resposta.body); // converte o JSON em mapa
+      final temp = dados['current']['temp_c']; // pega a temperatura
+      final condicao = dados['current']['condition']['text']; // pega a condição climática
+
+      // Atualiza a tela com os novos dados
+      setState(() {
+        resultado = "Cidade: $cidade\nTemperatura: $temp°C\nCondição: $condicao";
+      });
+    } else {
+      // Caso dê erro na requisição
+      setState(() {
+        resultado = "Erro na requisição: ${resposta.statusCode}";
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Consulta de Clima")), // barra no topo da tela
+      body: Padding(
+        padding: const EdgeInsets.all(16.0), // espaçamento interno
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center, // centraliza na vertical
+          children: [
+            // Campo de texto para digitar a cidade
+            TextField(
+              controller: cidadeController, // conecta o controlador para pegar o texto
+              decoration: const InputDecoration(
+                labelText: "Digite o nome da cidade",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16), // espaço entre os widgets
+
+            // Botão para buscar o clima
+            ElevatedButton(
+              onPressed: () {
+                final cidade = cidadeController.text.trim(); // pega o texto digitado e remove espaços
+                if (cidade.isNotEmpty) {
+                  buscarClima(cidade); // chama a função buscarClima
+                }
+              },
+              child: const Text("Buscar Clima"),
+            ),
+            const SizedBox(height: 24), // mais espaço
+
+            // Exibe o resultado na tela
+            Text(
+              resultado,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
